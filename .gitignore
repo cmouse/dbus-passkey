@@ -8,3 +8,5 @@
 vendor/
 dbus-passkey-test-provider
 dbus-passkey-ui-agent
+
+.claude/
