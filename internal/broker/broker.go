@@ -403,6 +403,22 @@ func (b *Broker) runMakeCredential(req *Request, path dbus.ObjectPath, opts *typ
 			req.emitCancelled()
 			return
 		}
+	} else if selectedProvider.RequiresPIN() {
+		agentPath, _ := b.agent.get()
+		if agentPath == "" {
+			req.emitError("NotAllowedError", "ui agent required for PIN-protected provider")
+			return
+		}
+		var err error
+		pin, err = b.collectPIN(b.conn, path, opts.RPID, selectedProvider.ID(), -1, timeout)
+		if err != nil {
+			req.emitInteractionEnded()
+			return
+		}
+		if pin == nil {
+			req.emitCancelled()
+			return
+		}
 	}
 
 	b.notifyOperation(b.conn, path, "MakeCredential", opts.RPID, "started")
@@ -430,6 +446,35 @@ func (b *Broker) runMakeCredential(req *Request, path dbus.ObjectPath, opts *typ
 	result, err := selectedProvider.MakeCredential(opts, pin)
 	close(stopWatch)
 	clearBytes(pin)
+
+	if err != nil {
+		if selectedProvider.RequiresPIN() && strings.Contains(err.Error(), "PINNotInitialized") {
+			// Provider PIN not set up yet — collect a new PIN and retry with init flag.
+			newPIN, initErr := b.collectNewPIN(b.conn, path, selectedProvider.ID(), selectedProvider.Name(), 4, timeout)
+			if initErr != nil {
+				b.notifyOperation(b.conn, path, "MakeCredential", opts.RPID, "failed")
+				req.emitInteractionEnded()
+				return
+			}
+			if newPIN == nil {
+				b.notifyOperation(b.conn, path, "MakeCredential", opts.RPID, "failed")
+				req.emitCancelled()
+				return
+			}
+			stopWatch2 := make(chan struct{})
+			go func() {
+				select {
+				case <-req.cancel:
+					selectedProvider.Cancel()
+				case <-stopWatch2:
+				}
+			}()
+			opts.InitPIN = true
+			result, err = selectedProvider.MakeCredential(opts, newPIN)
+			close(stopWatch2)
+			clearBytes(newPIN)
+		}
+	}
 
 	if err != nil {
 		b.notifyOperation(b.conn, path, "MakeCredential", opts.RPID, "failed")
@@ -490,6 +535,22 @@ func (b *Broker) runGetAssertion(req *Request, path dbus.ObjectPath, opts *types
 
 	var pin []byte
 	if needsUV(opts.UserVerification) && selectedProvider.Type() == "hardware" {
+		var err error
+		pin, err = b.collectPIN(b.conn, path, opts.RPID, selectedProvider.ID(), -1, timeout)
+		if err != nil {
+			req.emitInteractionEnded()
+			return
+		}
+		if pin == nil {
+			req.emitCancelled()
+			return
+		}
+	} else if selectedProvider.RequiresPIN() {
+		agentPath, _ := b.agent.get()
+		if agentPath == "" {
+			req.emitError("NotAllowedError", "ui agent required for PIN-protected provider")
+			return
+		}
 		var err error
 		pin, err = b.collectPIN(b.conn, path, opts.RPID, selectedProvider.ID(), -1, timeout)
 		if err != nil {
