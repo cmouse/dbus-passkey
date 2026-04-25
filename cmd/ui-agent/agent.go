@@ -11,7 +11,9 @@ import (
 const agentIface = "org.freedesktop.PasskeyBroker.UIAgent"
 
 type agentService struct {
-	mu sync.Mutex // serialise concurrent broker calls
+	mu            sync.Mutex // serialise concurrent broker calls
+	touchDialogMu sync.Mutex
+	touchDialogs  map[dbus.ObjectPath]*touchDialog
 }
 
 // varStr extracts a string from a candidate variant map.
@@ -118,6 +120,24 @@ func (a *agentService) NotifyOperation(
 	rh dbus.ObjectPath,
 	operation, rpID, status string,
 ) *dbus.Error {
-	go notifyOperation(operation, rpID, status)
+	switch status {
+	case "waiting_for_touch":
+		td := startTouchDialog(operation, rpID)
+		a.touchDialogMu.Lock()
+		if a.touchDialogs == nil {
+			a.touchDialogs = make(map[dbus.ObjectPath]*touchDialog)
+		}
+		a.touchDialogs[rh] = td
+		a.touchDialogMu.Unlock()
+	case "success", "failed", "cancelled":
+		a.touchDialogMu.Lock()
+		td := a.touchDialogs[rh]
+		delete(a.touchDialogs, rh)
+		a.touchDialogMu.Unlock()
+		if td != nil {
+			td.close()
+		}
+		go notifyOperation(operation, rpID, status)
+	}
 	return nil
 }

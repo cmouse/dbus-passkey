@@ -426,6 +426,7 @@ func (b *Broker) runMakeCredential(req *Request, path dbus.ObjectPath, opts *typ
 		}
 	}()
 
+	b.notifyOperation(b.conn, path, "MakeCredential", opts.RPID, "waiting_for_touch")
 	result, err := selectedProvider.MakeCredential(opts, pin)
 	close(stopWatch)
 	clearBytes(pin)
@@ -520,6 +521,7 @@ func (b *Broker) runGetAssertion(req *Request, path dbus.ObjectPath, opts *types
 		}
 	}()
 
+	b.notifyOperation(b.conn, path, "GetAssertion", opts.RPID, "waiting_for_touch")
 	result, err := selectedProvider.GetAssertion(opts, pin)
 	close(stopWatch)
 	clearBytes(pin)
