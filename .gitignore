@@ -2,6 +2,7 @@
 /dbus-passkey
 /dbus-passkey-nofido2
 /dbus-passkey-e2e-test
+/dbus-passkey-client
 
 # Go
 vendor/
