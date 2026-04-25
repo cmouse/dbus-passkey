@@ -137,7 +137,6 @@ func (a *agentService) NotifyOperation(
 		if td != nil {
 			td.close()
 		}
-		go notifyOperation(operation, rpID, status)
 	}
 	return nil
 }

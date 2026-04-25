@@ -96,22 +96,3 @@ func confirmReset(tokenName string) bool {
 	).Run()
 	return err == nil
 }
-
-// notifyOperation sends a desktop notification (best-effort).
-func notifyOperation(operation, rpID, status string) {
-	var summary, body string
-	switch status {
-	case "success":
-		summary = "Passkey operation succeeded"
-		body = fmt.Sprintf("%s — %s", operation, rpID)
-	case "failed":
-		summary = "Passkey operation failed"
-		body = fmt.Sprintf("%s — %s", operation, rpID)
-	case "cancelled":
-		summary = "Passkey operation cancelled"
-		body = fmt.Sprintf("%s — %s", operation, rpID)
-	default:
-		return // skip "started" and unknown statuses
-	}
-	exec.Command("notify-send", "--urgency=low", summary, body).Run() //nolint best-effort
-}
