@@ -49,27 +49,14 @@ func candidateLabel(c map[string]dbus.Variant) string {
 	return name
 }
 
-// decodeCandidates handles the godbus aa{sv} decode ambiguity.
-func decodeCandidates(raw interface{}) []map[string]dbus.Variant {
-	switch t := raw.(type) {
-	case []map[string]dbus.Variant:
-		return t
-	case []interface{}:
-		out := make([]map[string]dbus.Variant, 0, len(t))
-		for _, elem := range t {
-			if m, ok := elem.(map[string]dbus.Variant); ok {
-				out = append(out, m)
-			}
-		}
-		return out
-	}
-	return nil
+func decodeCandidates(raw []map[string]dbus.Variant) []map[string]dbus.Variant {
+	return raw
 }
 
 func (a *agentService) SelectAuthenticator(
 	rh dbus.ObjectPath,
 	operation, rpID string,
-	rawCandidates interface{},
+	rawCandidates []map[string]dbus.Variant,
 ) (int32, *dbus.Error) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
