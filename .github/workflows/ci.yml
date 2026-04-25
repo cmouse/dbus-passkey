@@ -117,9 +117,10 @@ jobs:
           CGO_ENABLED: "0"
           GOARCH: ${{ matrix.goarch }}
         run: |
-          go build -o dbus-passkey-nofido2     ./cmd/dbus-passkey
-          go build -o dbus-passkey-ui-agent    ./cmd/ui-agent
+          go build -o dbus-passkey-nofido2       ./cmd/dbus-passkey
+          go build -o dbus-passkey-ui-agent      ./cmd/ui-agent
           go build -o dbus-passkey-test-provider ./cmd/test-provider
+          go build -o dbus-passkey-client        ./cmd/passkey-client
 
       - name: Upload artifacts
         if: startsWith(github.ref, 'refs/tags/v')
@@ -130,6 +131,7 @@ jobs:
             dbus-passkey-nofido2
             dbus-passkey-ui-agent
             dbus-passkey-test-provider
+            dbus-passkey-client
           retention-days: 1
 
   release:
@@ -156,10 +158,12 @@ jobs:
           cp pure-linux-amd64/dbus-passkey-nofido2          release/dbus-passkey-nofido2-linux-amd64
           cp pure-linux-amd64/dbus-passkey-ui-agent         release/dbus-passkey-ui-agent-linux-amd64
           cp pure-linux-amd64/dbus-passkey-test-provider    release/dbus-passkey-test-provider-linux-amd64
+          cp pure-linux-amd64/dbus-passkey-client           release/dbus-passkey-client-linux-amd64
           # arm64 pure-Go binaries
           cp pure-linux-arm64/dbus-passkey-nofido2          release/dbus-passkey-nofido2-linux-arm64
           cp pure-linux-arm64/dbus-passkey-ui-agent         release/dbus-passkey-ui-agent-linux-arm64
           cp pure-linux-arm64/dbus-passkey-test-provider    release/dbus-passkey-test-provider-linux-arm64
+          cp pure-linux-arm64/dbus-passkey-client           release/dbus-passkey-client-linux-arm64
           # checksums
           cd release && sha256sum * > SHA256SUMS
 
