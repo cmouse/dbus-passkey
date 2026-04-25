@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"log"
 	"os"
 	"os/signal"
@@ -12,6 +13,9 @@ import (
 )
 
 func main() {
+	providersDir := flag.String("providers-dir", "", "override providers config directory")
+	flag.Parse()
+
 	conn, err := dbus.ConnectSessionBus()
 	if err != nil {
 		log.Fatalf("connect session bus: %v", err)
@@ -26,7 +30,12 @@ func main() {
 		log.Fatalf("name already taken")
 	}
 
-	reg := provider.NewRegistry()
+	var reg *provider.Registry
+	if *providersDir != "" {
+		reg = provider.NewRegistryWithDirs(*providersDir)
+	} else {
+		reg = provider.NewRegistry()
+	}
 
 	_, err = broker.New(conn, reg)
 	if err != nil {

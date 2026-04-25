@@ -1,6 +1,7 @@
 # Build outputs
 /dbus-passkey
 /dbus-passkey-nofido2
+/dbus-passkey-e2e-test
 
 # Go
 vendor/

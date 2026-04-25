@@ -20,16 +20,21 @@ const (
 type Registry struct {
 	mu      sync.RWMutex
 	entries []RegistryEntry
+	dirs    []string
 }
 
 func NewRegistry() *Registry {
-	r := &Registry{}
+	return NewRegistryWithDirs(systemDir, etcDir)
+}
+
+func NewRegistryWithDirs(dirs ...string) *Registry {
+	r := &Registry{dirs: dirs}
 	r.Reload()
 	return r
 }
 
 func (r *Registry) Reload() {
-	entries := loadDirs(systemDir, etcDir)
+	entries := loadDirs(r.dirs...)
 	r.mu.Lock()
 	r.entries = entries
 	r.mu.Unlock()
