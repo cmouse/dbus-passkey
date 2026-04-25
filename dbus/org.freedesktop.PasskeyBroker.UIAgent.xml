@@ -1,0 +1,26 @@
+<!DOCTYPE node PUBLIC "-//freedesktop//DTD D-BUS Object Introspection 1.0//EN"
+"http://www.freedesktop.org/standards/dbus/1.0/introspect.dtd">
+<node>
+  <interface name="org.freedesktop.PasskeyBroker.UIAgent">
+    <method name="SelectAuthenticator">
+      <arg name="request_handle" type="o" direction="in"/>
+      <arg name="operation" type="s" direction="in"/>
+      <arg name="rp_id" type="s" direction="in"/>
+      <arg name="candidates" type="aa{sv}" direction="in"/>
+      <arg name="selected_index" type="i" direction="out"/>
+    </method>
+    <method name="CollectPIN">
+      <arg name="request_handle" type="o" direction="in"/>
+      <arg name="rp_id" type="s" direction="in"/>
+      <arg name="provider_id" type="s" direction="in"/>
+      <arg name="attempts_left" type="i" direction="in"/>
+      <arg name="pin" type="s" direction="out"/>
+    </method>
+    <method name="NotifyOperation">
+      <arg name="request_handle" type="o" direction="in"/>
+      <arg name="operation" type="s" direction="in"/>
+      <arg name="rp_id" type="s" direction="in"/>
+      <arg name="status" type="s" direction="in"/>
+    </method>
+  </interface>
+</node>

@@ -1,0 +1,14 @@
+[Unit]
+Description=D-Bus Passkey Broker
+Documentation=https://github.com/cmouse/dbus-passkey
+After=dbus.socket
+
+[Service]
+Type=dbus
+BusName=org.freedesktop.PasskeyBroker
+ExecStart=/usr/libexec/dbus-passkey
+Restart=on-failure
+ExecReload=/bin/kill -HUP $MAINPID
+
+[Install]
+WantedBy=default.target

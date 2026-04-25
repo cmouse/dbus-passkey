@@ -1,0 +1,22 @@
+<!DOCTYPE node PUBLIC "-//freedesktop//DTD D-BUS Object Introspection 1.0//EN"
+"http://www.freedesktop.org/standards/dbus/1.0/introspect.dtd">
+<node name="/org/freedesktop/PasskeyBroker">
+  <interface name="org.freedesktop.PasskeyBroker">
+    <method name="MakeCredential">
+      <arg name="parent_window" type="s" direction="in"/>
+      <arg name="options" type="a{sv}" direction="in"/>
+      <arg name="handle" type="o" direction="out"/>
+    </method>
+    <method name="GetAssertion">
+      <arg name="parent_window" type="s" direction="in"/>
+      <arg name="options" type="a{sv}" direction="in"/>
+      <arg name="handle" type="o" direction="out"/>
+    </method>
+    <method name="RegisterUIAgent">
+      <arg name="agent_path" type="o" direction="in"/>
+    </method>
+    <method name="UnregisterUIAgent">
+      <arg name="agent_path" type="o" direction="in"/>
+    </method>
+  </interface>
+</node>
