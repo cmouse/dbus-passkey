@@ -34,9 +34,10 @@
     <!-- Enrollment callbacks -->
 
     <!--
-      CollectNewPIN — collect a new PIN for SetPIN.
+      CollectNewPIN — collect a new PIN for hardware token SetPIN or first-use
+      initialization of a software provider (e.g. GNOME Keyring PKCS#11 token).
       The UI should ask the user to enter and confirm the new PIN.
-      min_length: minimum PIN length as reported by the token (0 = unknown, use 4).
+      min_length: minimum PIN length (0 = unknown, use 4).
       Returns empty string if cancelled.
     -->
     <method name="CollectNewPIN">

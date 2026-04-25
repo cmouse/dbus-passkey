@@ -10,12 +10,13 @@ Application
     ▼
 org.freedesktop.PasskeyBroker   (this daemon)
     ├── Hardware tokens          (libfido2, USB)
+    ├── GNOME Keyring provider   (PKCS#11 keys + Secret Service metadata)
     └── Software providers       (fi.cmouse.PasskeyBroker.Provider, D-Bus)
 
 UI Agent (separate process)
     └── org.freedesktop.PasskeyBroker.UIAgent
         ├── SelectAuthenticator
-        ├── CollectPIN
+        ├── CollectPIN / CollectNewPIN
         └── NotifyOperation
 ```
 
@@ -63,6 +64,53 @@ UnregisterUIAgent(agent_path o)
 ```
 
 The broker watches the agent's D-Bus name; if the UI process exits, the agent is auto-unregistered and the broker falls back to headless auto-selection.
+
+## GNOME Keyring Provider
+
+`dbus-passkey-gnome-keyring-provider` is a software passkey provider for users without hardware
+FIDO2 tokens. Private keys are generated and stored inside gnome-keyring's PKCS#11 module —
+they are never exposed in plaintext. Credential metadata is stored encrypted in the
+GNOME Keyring Secret Service (default collection).
+
+Every operation (registration and assertion) requires the user to enter a PIN via the UI agent.
+On first use a "Set new PIN" dialog appears to initialize the PKCS#11 token; thereafter a
+"Enter PIN" dialog appears before each operation, providing explicit user consent.
+
+### Prerequisites
+
+- `gnome-keyring` with PKCS#11 support (`gnome-keyring-pkcs11.so`)
+- `dbus-passkey-ui-agent` running (required for PIN prompts)
+
+### Installation
+
+```sh
+make install-gnome-keyring-provider
+```
+
+This installs the binary to `$(PREFIX)/libexec/` and the provider config to
+`$(PREFIX)/share/dbus-passkey/providers.d/gnome-keyring-provider.conf`.
+
+The provider config sets `RequiresPIN=true`, which tells the broker to always collect
+a PIN via the UI agent before calling into the provider.
+
+### Verifying stored keys
+
+```sh
+# List PKCS#11 objects (adjust module path for your distro)
+pkcs11-tool --module /usr/lib/x86_64-linux-gnu/pkcs11/gnome-keyring-pkcs11.so -O
+
+# List Secret Service metadata
+secret-tool search app dbus-passkey
+```
+
+### Security properties
+
+| Property | Detail |
+|----------|--------|
+| Private key storage | gnome-keyring PKCS#11 (CKA_SENSITIVE=true, CKA_EXTRACTABLE=false) |
+| Metadata storage | Secret Service default collection (encrypted at rest) |
+| Per-operation consent | PIN required; collected via UI agent before every operation |
+| Key algorithm | EC P-256 (ES256, COSE alg -7) |
 
 ## Software Providers
 

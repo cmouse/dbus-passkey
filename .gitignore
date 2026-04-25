@@ -8,5 +8,6 @@
 vendor/
 dbus-passkey-test-provider
 dbus-passkey-ui-agent
+dbus-passkey-gnome-keyring-provider
 
 .claude/
