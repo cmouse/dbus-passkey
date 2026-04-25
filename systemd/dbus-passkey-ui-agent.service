@@ -1,0 +1,15 @@
+[Unit]
+Description=D-Bus Passkey UI Agent
+Documentation=https://github.com/cmouse/dbus-passkey
+After=graphical-session.target dbus-passkey.service
+Wants=dbus-passkey.service
+PartOf=graphical-session.target
+
+[Service]
+Type=dbus
+BusName=org.freedesktop.PasskeyBroker.UIAgent
+ExecStart=/usr/libexec/dbus-passkey-ui-agent
+Restart=on-failure
+
+[Install]
+WantedBy=graphical-session.target

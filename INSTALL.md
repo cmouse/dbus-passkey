@@ -56,13 +56,52 @@ This also installs:
 - `dbus-service/org.freedesktop.PasskeyBroker.service` → `$PREFIX/share/dbus-1/services/`
 - `config/providers.d/example.conf` → `$PREFIX/share/dbus-passkey/providers.d/`
 
+## Install UI Agent
+
+The UI agent handles authenticator selection dialogs, PIN entry, and status notifications. It runs in the graphical desktop session and requires `zenity`, `pinentry`, and `notify-send`.
+
+### Runtime Dependencies
+
+```sh
+# Debian / Ubuntu
+apt install zenity pinentry-gnome3 libnotify-bin
+
+# Fedora / RHEL
+dnf install zenity pinentry-gnome notify-send
+
+# Arch Linux
+pacman -S zenity pinentry libnotify
+```
+
+### Build and Install
+
+```sh
+make build-ui-agent
+sudo make install-ui-agent
+```
+
+Installs:
+- `dbus-passkey-ui-agent` → `$PREFIX/libexec/`
+- `dbus/org.freedesktop.PasskeyBroker.UIAgent.service` → `$PREFIX/share/dbus-1/services/`
+- `systemd/dbus-passkey-ui-agent.service` → `$PREFIX/lib/systemd/user/`
+
 ## Enable (systemd user session)
+
+Start the broker:
 
 ```sh
 systemctl --user enable --now dbus-passkey
 ```
 
-The D-Bus service file also allows on-demand activation: any application calling `org.freedesktop.PasskeyBroker` will start the daemon automatically.
+Start the UI agent (must run inside a graphical session):
+
+```sh
+systemctl --user enable --now dbus-passkey-ui-agent
+```
+
+The UI agent is also D-Bus activatable: the broker will trigger it on demand when a UI operation is needed. The systemd unit is recommended for desktop session autostart.
+
+The D-Bus service files also allow on-demand activation: any application calling `org.freedesktop.PasskeyBroker` will start the broker automatically, and the broker will start the UI agent when a dialog is needed.
 
 ## udev Rules (hardware tokens)
 
@@ -99,7 +138,7 @@ systemctl --user kill -s HUP dbus-passkey
 
 ## Verify
 
-After starting the daemon:
+After starting the broker:
 
 ```sh
 dbus-send --session \
@@ -110,3 +149,20 @@ dbus-send --session \
 ```
 
 Should return the broker interface XML.
+
+Check broker status and confirm the UI agent has registered:
+
+```sh
+systemctl --user status dbus-passkey
+systemctl --user status dbus-passkey-ui-agent
+```
+
+Trigger the UI agent via D-Bus activation (no systemd required):
+
+```sh
+dbus-send --session \
+  --dest=org.freedesktop.PasskeyBroker.UIAgent \
+  --print-reply \
+  /org/freedesktop/PasskeyBroker/UIAgent \
+  org.freedesktop.DBus.Introspectable.Introspect
+```

@@ -1,5 +1,6 @@
 BINARY = dbus-passkey
 TEST_PROVIDER = dbus-passkey-test-provider
+UI_AGENT = dbus-passkey-ui-agent
 PREFIX ?= /usr
 
 build:
@@ -24,10 +25,20 @@ install-test-provider: build-test-provider
 	install -Dm644 config/providers.d/test-provider.conf \
 		$(DESTDIR)$(PREFIX)/share/dbus-passkey/providers.d/test-provider.conf
 
+build-ui-agent:
+	CGO_ENABLED=0 go build -o $(UI_AGENT) ./cmd/ui-agent
+
+install-ui-agent: build-ui-agent
+	install -Dm755 $(UI_AGENT) $(DESTDIR)$(PREFIX)/libexec/$(UI_AGENT)
+	install -Dm644 dbus/org.freedesktop.PasskeyBroker.UIAgent.service \
+		$(DESTDIR)$(PREFIX)/share/dbus-1/services/org.freedesktop.PasskeyBroker.UIAgent.service
+	install -Dm644 systemd/dbus-passkey-ui-agent.service \
+		$(DESTDIR)$(PREFIX)/lib/systemd/user/dbus-passkey-ui-agent.service
+
 vet:
 	go vet ./...
 
 clean:
-	rm -f $(BINARY) $(BINARY)-nofido2 $(TEST_PROVIDER)
+	rm -f $(BINARY) $(BINARY)-nofido2 $(TEST_PROVIDER) $(UI_AGENT)
 
-.PHONY: build build-nofido2 build-test-provider install install-test-provider vet clean
+.PHONY: build build-nofido2 build-test-provider build-ui-agent install install-test-provider install-ui-agent vet clean

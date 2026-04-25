@@ -1,0 +1,3 @@
+[D-BUS Service]
+Name=org.freedesktop.PasskeyBroker.UIAgent
+Exec=/usr/libexec/dbus-passkey-ui-agent
