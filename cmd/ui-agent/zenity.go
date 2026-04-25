@@ -17,16 +17,14 @@ func selectAuthenticator(operation, rpID string, labels []string) (int, error) {
 		"--list", "--radiolist",
 		"--title=Select Authenticator",
 		fmt.Sprintf("--text=Operation: %s\nSite: %s", operation, rpID),
-		"--column=", "--column=Authenticator", "--column=Index",
-		"--hide-column=3",
-		"--print-column=3",
+		"--column=", "--column=Authenticator",
 	}
 	for i, label := range labels {
 		toggle := "FALSE"
 		if i == 0 {
 			toggle = "TRUE"
 		}
-		args = append(args, toggle, label, fmt.Sprintf("%d", i))
+		args = append(args, toggle, label)
 	}
 
 	out, err := exec.Command("zenity", args...).Output()
@@ -38,15 +36,12 @@ func selectAuthenticator(operation, rpID string, labels []string) (int, error) {
 	if selected == "" {
 		return -1, nil
 	}
-	// Parse the index from hidden column output
-	var idx int
-	if _, err := fmt.Sscanf(selected, "%d", &idx); err != nil {
-		return -1, fmt.Errorf("zenity: parse index %q: %w", selected, err)
+	for i, label := range labels {
+		if label == selected {
+			return i, nil
+		}
 	}
-	if idx < 0 || idx >= len(labels) {
-		return -1, fmt.Errorf("zenity: index %d out of range", idx)
-	}
-	return idx, nil
+	return -1, fmt.Errorf("zenity: selected label %q not in list", selected)
 }
 
 // confirmReset shows a zenity warning dialog for a destructive reset operation.
