@@ -5,6 +5,8 @@ E2E_TEST      = dbus-passkey-e2e-test
 CLIENT        = dbus-passkey-client
 PREFIX ?= /usr
 
+all: build-all
+
 build:
 	CGO_ENABLED=1 go build -o $(BINARY) ./cmd/dbus-passkey
 
@@ -55,4 +57,4 @@ clean:
 
 .PHONY: build build-nofido2 build-ui-agent build-test-provider build-e2e-test build-client \
         build-all build-all-nofido2 \
-        install install-test-provider install-ui-agent vet clean
+        install install-test-provider install-ui-agent vet clean all
