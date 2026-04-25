@@ -86,15 +86,19 @@ jobs:
       - name: Install libfido2
         run: sudo apt-get install -y libfido2-dev
 
-      - name: Build dbus-passkey (CGO)
-        run: CGO_ENABLED=1 go build -o dbus-passkey ./cmd/dbus-passkey
+      - name: Build CGO binaries
+        run: |
+          CGO_ENABLED=1 go build -o dbus-passkey                    ./cmd/dbus-passkey
+          CGO_ENABLED=1 go build -o dbus-passkey-gnome-keyring-provider ./cmd/gnome-keyring-provider
 
       - name: Upload artifact
         if: startsWith(github.ref, 'refs/tags/v')
         uses: actions/upload-artifact@v4
         with:
           name: dbus-passkey-linux-${{ matrix.arch }}
-          path: dbus-passkey
+          path: |
+            dbus-passkey
+            dbus-passkey-gnome-keyring-provider
           retention-days: 1
 
   build-pure:
@@ -152,8 +156,10 @@ jobs:
           cd dist
           # amd64 CGO binary
           mkdir -p release
-          cp dbus-passkey-linux-amd64/dbus-passkey          release/dbus-passkey-linux-amd64
-          cp dbus-passkey-linux-arm64/dbus-passkey          release/dbus-passkey-linux-arm64
+          cp dbus-passkey-linux-amd64/dbus-passkey                        release/dbus-passkey-linux-amd64
+          cp dbus-passkey-linux-arm64/dbus-passkey                        release/dbus-passkey-linux-arm64
+          cp dbus-passkey-linux-amd64/dbus-passkey-gnome-keyring-provider release/dbus-passkey-gnome-keyring-provider-linux-amd64
+          cp dbus-passkey-linux-arm64/dbus-passkey-gnome-keyring-provider release/dbus-passkey-gnome-keyring-provider-linux-arm64
           # amd64 pure-Go binaries
           cp pure-linux-amd64/dbus-passkey-nofido2          release/dbus-passkey-nofido2-linux-amd64
           cp pure-linux-amd64/dbus-passkey-ui-agent         release/dbus-passkey-ui-agent-linux-amd64
