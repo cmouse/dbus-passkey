@@ -81,6 +81,36 @@ Priority=50
 
 D-Bus service activation handles provider process lifetime — providers ship their own `.service` files in `/usr/share/dbus-1/services/`. Send SIGHUP to the broker to reload the provider registry without dropping active requests.
 
+## Authenticator Management
+
+### Enumerate
+
+```
+EnumerateAuthenticators() -> aa{sv}
+```
+
+Returns all available authenticators — both connected hardware FIDO2 tokens and registered software providers. Each entry includes `id`, `name`, `type`, `has_pin`, `pin_retries`, `is_fido2`, `min_pin_length`.
+
+Use the returned `id` with the management methods below.
+
+### Set / Change PIN
+
+```
+SetPIN(token_id s, parent_window s) -> (handle o)
+```
+
+Async. The broker calls `CollectNewPIN` on the UI agent (and `CollectPIN` for the old PIN if one is already set). `token_id` is the `id` from `EnumerateAuthenticators`.
+
+### Reset Token
+
+```
+ResetToken(token_id s, parent_window s) -> (handle o)
+```
+
+Async. Calls `ConfirmReset` on the UI agent, then performs CTAP2 `authenticatorReset`.
+
+**Important:** CTAP2 reset only succeeds within ~10 seconds of device power-up and requires a physical touch. Remove and reinsert the token immediately before calling `ResetToken`. All credentials on the device are permanently erased.
+
 ## Security Notes
 
 - **PIN handling**: PINs are held in memory only from UI agent return to provider/libfido2 call. The `[]byte` buffer is zeroed after use. A transient `string` copy exists for the libfido2 API call and will persist until GC.

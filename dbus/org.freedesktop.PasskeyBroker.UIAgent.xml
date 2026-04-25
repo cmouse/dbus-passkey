@@ -2,25 +2,61 @@
 "http://www.freedesktop.org/standards/dbus/1.0/introspect.dtd">
 <node>
   <interface name="org.freedesktop.PasskeyBroker.UIAgent">
+
+    <!-- Credential operation callbacks -->
+
     <method name="SelectAuthenticator">
       <arg name="request_handle" type="o" direction="in"/>
       <arg name="operation" type="s" direction="in"/>
       <arg name="rp_id" type="s" direction="in"/>
       <arg name="candidates" type="aa{sv}" direction="in"/>
       <arg name="selected_index" type="i" direction="out"/>
+      <!-- selected_index: index into candidates; -1 = user cancelled -->
     </method>
+
     <method name="CollectPIN">
       <arg name="request_handle" type="o" direction="in"/>
       <arg name="rp_id" type="s" direction="in"/>
       <arg name="provider_id" type="s" direction="in"/>
       <arg name="attempts_left" type="i" direction="in"/>
       <arg name="pin" type="s" direction="out"/>
+      <!-- pin: empty string = user cancelled -->
     </method>
+
     <method name="NotifyOperation">
       <arg name="request_handle" type="o" direction="in"/>
       <arg name="operation" type="s" direction="in"/>
       <arg name="rp_id" type="s" direction="in"/>
       <arg name="status" type="s" direction="in"/>
+      <!-- status: "started" | "waiting_for_touch" | "success" | "failed" | "cancelled" -->
     </method>
+
+    <!-- Enrollment callbacks -->
+
+    <!--
+      CollectNewPIN — collect a new PIN for SetPIN.
+      The UI should ask the user to enter and confirm the new PIN.
+      min_length: minimum PIN length as reported by the token (0 = unknown, use 4).
+      Returns empty string if cancelled.
+    -->
+    <method name="CollectNewPIN">
+      <arg name="request_handle" type="o" direction="in"/>
+      <arg name="token_id" type="s" direction="in"/>
+      <arg name="token_name" type="s" direction="in"/>
+      <arg name="min_length" type="i" direction="in"/>
+      <arg name="pin" type="s" direction="out"/>
+    </method>
+
+    <!--
+      ConfirmReset — ask user to confirm a destructive factory reset.
+      Returns false if the user declines or cancels.
+    -->
+    <method name="ConfirmReset">
+      <arg name="request_handle" type="o" direction="in"/>
+      <arg name="token_id" type="s" direction="in"/>
+      <arg name="token_name" type="s" direction="in"/>
+      <arg name="confirmed" type="b" direction="out"/>
+    </method>
+
   </interface>
 </node>

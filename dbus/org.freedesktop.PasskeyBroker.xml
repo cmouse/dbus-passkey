@@ -2,6 +2,8 @@
 "http://www.freedesktop.org/standards/dbus/1.0/introspect.dtd">
 <node name="/org/freedesktop/PasskeyBroker">
   <interface name="org.freedesktop.PasskeyBroker">
+
+    <!-- Credential operations (async, return Request handle) -->
     <method name="MakeCredential">
       <arg name="parent_window" type="s" direction="in"/>
       <arg name="options" type="a{sv}" direction="in"/>
@@ -12,11 +14,62 @@
       <arg name="options" type="a{sv}" direction="in"/>
       <arg name="handle" type="o" direction="out"/>
     </method>
+
+    <!-- UI agent registration -->
     <method name="RegisterUIAgent">
       <arg name="agent_path" type="o" direction="in"/>
     </method>
     <method name="UnregisterUIAgent">
       <arg name="agent_path" type="o" direction="in"/>
     </method>
+
+    <!-- Authenticator management -->
+
+    <!--
+      EnumerateAuthenticators — synchronous.
+      Returns a list of all available authenticators (hardware tokens and
+      registered software providers).
+
+      Each entry is a{sv} with keys:
+        id            s    stable identifier (device path for hardware)
+        name          s    human-readable name
+        type          s    "hardware" or "software"
+        transports    as   e.g. ["usb"], ["internal"]
+        has_pin       b    whether a PIN is currently set (hardware only)
+        pin_retries   i    remaining PIN attempts, -1 if unknown
+        is_fido2      b    FIDO2 capable (vs. FIDO U2F only)
+        min_pin_length i   minimum PIN length, 0 if unknown
+    -->
+    <method name="EnumerateAuthenticators">
+      <arg name="authenticators" type="aa{sv}" direction="out"/>
+    </method>
+
+    <!--
+      SetPIN — async, returns Request handle.
+      Sets or changes the PIN on a hardware token identified by token_id
+      (as returned by EnumerateAuthenticators). The UI agent is called to
+      collect the new PIN (and old PIN if one is already set).
+      Response signal: 0=success, 1=cancelled, 2=interaction-ended, 3=error.
+    -->
+    <method name="SetPIN">
+      <arg name="token_id" type="s" direction="in"/>
+      <arg name="parent_window" type="s" direction="in"/>
+      <arg name="handle" type="o" direction="out"/>
+    </method>
+
+    <!--
+      ResetToken — async, returns Request handle.
+      Factory-resets a hardware token (CTAP2 authenticatorReset).
+      IMPORTANT: Reset only succeeds within ~10 seconds of device power-up
+      and requires user touch. The UI agent ConfirmReset is called first.
+      All credentials on the device will be erased.
+      Response signal: 0=success, 1=cancelled, 2=interaction-ended, 3=error.
+    -->
+    <method name="ResetToken">
+      <arg name="token_id" type="s" direction="in"/>
+      <arg name="parent_window" type="s" direction="in"/>
+      <arg name="handle" type="o" direction="out"/>
+    </method>
+
   </interface>
 </node>

@@ -152,6 +152,97 @@ func (b *Broker) collectPIN(
 	}
 }
 
+// collectNewPIN calls CollectNewPIN on the UI agent for PIN setup/change.
+// Returns PIN bytes (caller must clear) or nil if cancelled.
+func (b *Broker) collectNewPIN(
+	conn *dbus.Conn,
+	requestPath dbus.ObjectPath,
+	tokenID string,
+	tokenName string,
+	minLength int,
+	timeout time.Duration,
+) ([]byte, error) {
+	agentPath, agentSender := b.agent.get()
+	if agentPath == "" {
+		return nil, nil
+	}
+	obj := conn.Object(agentSender, agentPath)
+
+	type result struct {
+		pin string
+		err error
+	}
+	ch := make(chan result, 1)
+	go func() {
+		var pin string
+		call := obj.Call(uiAgentIface+".CollectNewPIN", 0,
+			requestPath, tokenID, tokenName, int32(minLength))
+		if call.Err != nil {
+			ch <- result{err: call.Err}
+			return
+		}
+		if err := call.Store(&pin); err != nil {
+			ch <- result{err: err}
+			return
+		}
+		ch <- result{pin: pin}
+	}()
+
+	select {
+	case r := <-ch:
+		if r.err != nil {
+			return nil, r.err
+		}
+		if r.pin == "" {
+			return nil, nil
+		}
+		return []byte(r.pin), nil
+	case <-time.After(timeout):
+		return nil, nil
+	}
+}
+
+// confirmReset calls ConfirmReset on the UI agent. Returns false if cancelled or timed out.
+func (b *Broker) confirmReset(
+	conn *dbus.Conn,
+	requestPath dbus.ObjectPath,
+	tokenID string,
+	tokenName string,
+	timeout time.Duration,
+) (bool, error) {
+	agentPath, agentSender := b.agent.get()
+	if agentPath == "" {
+		return false, nil
+	}
+	obj := conn.Object(agentSender, agentPath)
+
+	type result struct {
+		ok  bool
+		err error
+	}
+	ch := make(chan result, 1)
+	go func() {
+		var ok bool
+		call := obj.Call(uiAgentIface+".ConfirmReset", 0, requestPath, tokenID, tokenName)
+		if call.Err != nil {
+			ch <- result{err: call.Err}
+			return
+		}
+		if err := call.Store(&ok); err != nil {
+			ch <- result{err: err}
+			return
+		}
+		ch <- result{ok: ok}
+	}()
+
+	select {
+	case r := <-ch:
+		return r.ok, r.err
+	case <-time.After(timeout):
+		return false, nil
+	}
+}
+
 // notifyOperation calls NotifyOperation on the UI agent (best-effort, no error returned).
 func (b *Broker) notifyOperation(
 	conn *dbus.Conn,

@@ -74,6 +74,19 @@ const (
 	ResponseError       ResponseCode = 3
 )
 
+// AuthenticatorInfo describes an available authenticator (hardware or software).
+type AuthenticatorInfo struct {
+	ID           string
+	Name         string
+	Type         string // "hardware" or "software"
+	Transports   []string
+	HasPIN       bool
+	PINRetries   int // -1 if unknown
+	IsFIDO2      bool
+	Path         string // device path (hardware only)
+	MinPINLength int    // 0 = unknown/not applicable
+}
+
 // Candidate describes an authenticator candidate for UI selection.
 type Candidate struct {
 	ProviderID      string

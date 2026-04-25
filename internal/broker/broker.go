@@ -141,6 +141,203 @@ func (b *Broker) UnregisterUIAgent(sender dbus.Sender, agentPath dbus.ObjectPath
 	return nil
 }
 
+// EnumerateAuthenticators returns info on all connected hardware tokens and
+// registered software providers. Synchronous — no Request object.
+func (b *Broker) EnumerateAuthenticators() ([]map[string]dbus.Variant, *dbus.Error) {
+	var result []map[string]dbus.Variant
+
+	// Hardware tokens
+	infos, err := fido2.EnumerateTokenInfos()
+	if err != nil {
+		log.Printf("enumerate tokens: %v", err)
+	}
+	for _, info := range infos {
+		result = append(result, authenticatorInfoToVariant(info))
+	}
+
+	// Software providers from registry
+	for _, entry := range b.registry.Entries() {
+		info := &types.AuthenticatorInfo{
+			ID:         entry.ID,
+			Name:       entry.Name,
+			Type:       "software",
+			Transports: entry.Transports,
+			IsFIDO2:    true,
+			PINRetries: -1,
+		}
+		result = append(result, authenticatorInfoToVariant(info))
+	}
+
+	if result == nil {
+		result = []map[string]dbus.Variant{}
+	}
+	return result, nil
+}
+
+// SetPIN sets or changes the PIN on a hardware token. Returns a Request handle.
+// If the token has no PIN, old_pin in options should be absent or empty.
+func (b *Broker) SetPIN(sender dbus.Sender, tokenID string, parentWindow string) (dbus.ObjectPath, *dbus.Error) {
+	path, req := b.newRequest(string(sender))
+	if err := exportRequest(b.conn, path, req); err != nil {
+		return "", dbus.NewError("org.freedesktop.DBus.Error.Failed", []interface{}{err.Error()})
+	}
+	b.mu.Lock()
+	b.requests[path] = req
+	b.mu.Unlock()
+
+	go b.runSetPIN(req, path, tokenID)
+	return path, nil
+}
+
+// ResetToken performs a factory reset on a hardware token. Returns a Request handle.
+// CTAP2 reset is time-windowed (~10s after power-up) and requires user touch.
+func (b *Broker) ResetToken(sender dbus.Sender, tokenID string, parentWindow string) (dbus.ObjectPath, *dbus.Error) {
+	path, req := b.newRequest(string(sender))
+	if err := exportRequest(b.conn, path, req); err != nil {
+		return "", dbus.NewError("org.freedesktop.DBus.Error.Failed", []interface{}{err.Error()})
+	}
+	b.mu.Lock()
+	b.requests[path] = req
+	b.mu.Unlock()
+
+	go b.runResetToken(req, path, tokenID)
+	return path, nil
+}
+
+func (b *Broker) runSetPIN(req *Request, path dbus.ObjectPath, tokenID string) {
+	defer b.removeRequest(path)
+	timeout := time.Duration(defaultTimeoutMS) * time.Millisecond
+
+	// Probe device to determine if it already has a PIN
+	infos, _ := fido2.EnumerateTokenInfos()
+	var tokenInfo *types.AuthenticatorInfo
+	for _, info := range infos {
+		if info.ID == tokenID {
+			tokenInfo = info
+			break
+		}
+	}
+	if tokenInfo == nil {
+		req.emitError("NotFoundError", fmt.Sprintf("token not found: %s", tokenID))
+		return
+	}
+
+	// Collect new PIN via UI agent
+	newPIN, err := b.collectNewPIN(b.conn, path, tokenInfo.ID, tokenInfo.Name, tokenInfo.MinPINLength, timeout)
+	if err != nil {
+		req.emitInteractionEnded()
+		return
+	}
+	if newPIN == nil {
+		req.emitCancelled()
+		return
+	}
+
+	// If token already has a PIN, collect the old one
+	var oldPIN []byte
+	if tokenInfo.HasPIN {
+		oldPIN, err = b.collectPIN(b.conn, path, tokenID, tokenID, tokenInfo.PINRetries, timeout)
+		if err != nil {
+			clearBytes(newPIN)
+			req.emitInteractionEnded()
+			return
+		}
+		if oldPIN == nil {
+			clearBytes(newPIN)
+			req.emitCancelled()
+			return
+		}
+	}
+
+	select {
+	case <-req.cancel:
+		clearBytes(newPIN)
+		clearBytes(oldPIN)
+		req.emitCancelled()
+		return
+	default:
+	}
+
+	err = fido2.SetPIN(tokenID, newPIN, oldPIN)
+	clearBytes(newPIN)
+	clearBytes(oldPIN)
+
+	if err != nil {
+		req.emitError("UnknownError", err.Error())
+		return
+	}
+	req.emitResponse(types.ResponseSuccess, map[string]dbus.Variant{})
+}
+
+func (b *Broker) runResetToken(req *Request, path dbus.ObjectPath, tokenID string) {
+	defer b.removeRequest(path)
+	timeout := time.Duration(defaultTimeoutMS) * time.Millisecond
+
+	// Probe to get token name for UI
+	infos, _ := fido2.EnumerateTokenInfos()
+	tokenName := tokenID
+	for _, info := range infos {
+		if info.ID == tokenID {
+			tokenName = info.Name
+			break
+		}
+	}
+
+	// Confirm destructive reset via UI agent
+	confirmed, err := b.confirmReset(b.conn, path, tokenID, tokenName, timeout)
+	if err != nil {
+		req.emitInteractionEnded()
+		return
+	}
+	if !confirmed {
+		req.emitCancelled()
+		return
+	}
+
+	select {
+	case <-req.cancel:
+		req.emitCancelled()
+		return
+	default:
+	}
+
+	// Wire cancel to device cancel during blocking reset (waits for touch)
+	stopWatch := make(chan struct{})
+	go func() {
+		select {
+		case <-req.cancel:
+			// Signal the cancelCh passed to ResetToken via the request cancel
+		case <-stopWatch:
+		}
+	}()
+
+	err = fido2.ResetToken(tokenID, req.cancel)
+	close(stopWatch)
+
+	if err != nil {
+		if err.Error() == "cancelled" {
+			req.emitCancelled()
+		} else {
+			req.emitError("UnknownError", err.Error())
+		}
+		return
+	}
+	req.emitResponse(types.ResponseSuccess, map[string]dbus.Variant{})
+}
+
+func authenticatorInfoToVariant(info *types.AuthenticatorInfo) map[string]dbus.Variant {
+	return map[string]dbus.Variant{
+		"id":            dbus.MakeVariant(info.ID),
+		"name":          dbus.MakeVariant(info.Name),
+		"type":          dbus.MakeVariant(info.Type),
+		"transports":    dbus.MakeVariant(info.Transports),
+		"has_pin":       dbus.MakeVariant(info.HasPIN),
+		"pin_retries":   dbus.MakeVariant(int32(info.PINRetries)),
+		"is_fido2":      dbus.MakeVariant(info.IsFIDO2),
+		"min_pin_length": dbus.MakeVariant(int32(info.MinPINLength)),
+	}
+}
+
 func (b *Broker) newRequest(sender string) (dbus.ObjectPath, *Request) {
 	n := b.reqCount.Add(1)
 	escaped := escapeDBusName(sender)
@@ -564,6 +761,19 @@ func (b *Broker) introspector() introspector {
     </method>
     <method name="UnregisterUIAgent">
       <arg name="agent_path" type="o" direction="in"/>
+    </method>
+    <method name="EnumerateAuthenticators">
+      <arg name="authenticators" type="aa{sv}" direction="out"/>
+    </method>
+    <method name="SetPIN">
+      <arg name="token_id" type="s" direction="in"/>
+      <arg name="parent_window" type="s" direction="in"/>
+      <arg name="handle" type="o" direction="out"/>
+    </method>
+    <method name="ResetToken">
+      <arg name="token_id" type="s" direction="in"/>
+      <arg name="parent_window" type="s" direction="in"/>
+      <arg name="handle" type="o" direction="out"/>
     </method>
   </interface>
 </node>`}
