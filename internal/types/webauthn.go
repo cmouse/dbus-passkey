@@ -15,6 +15,7 @@ type MakeCredentialOptions struct {
 	UserVerification      string
 	Attestation           string
 	TimeoutMS             uint32
+	InitPIN               bool // provider should initialize its PIN storage with the supplied pin
 }
 
 // GetAssertionOptions holds caller-supplied options for assertion.

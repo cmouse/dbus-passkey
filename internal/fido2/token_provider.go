@@ -58,6 +58,7 @@ func (t *TokenProvider) ID() string           { return t.id }
 func (t *TokenProvider) Name() string         { return t.name }
 func (t *TokenProvider) Type() string         { return "hardware" }
 func (t *TokenProvider) Transports() []string { return []string{"usb"} }
+func (t *TokenProvider) RequiresPIN() bool    { return false }
 func (t *TokenProvider) SupportedAlgorithms() []int32 {
 	// ES256 (-7) and EdDSA (-8) are the common supported algorithms.
 	return []int32{-7, -8}

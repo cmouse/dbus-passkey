@@ -19,15 +19,20 @@ type Provider interface {
 
 	// Cancel interrupts an in-progress operation. Must be safe to call from any goroutine.
 	Cancel()
+
+	// RequiresPIN reports whether the broker must collect a PIN before calling
+	// MakeCredential or GetAssertion on this provider.
+	RequiresPIN() bool
 }
 
 // RegistryEntry is metadata loaded from a provider .conf file.
 type RegistryEntry struct {
-	Name               string
-	ID                 string
-	DBusName           string
-	ObjectPath         string
-	Transports         []string
+	Name                string
+	ID                  string
+	DBusName            string
+	ObjectPath          string
+	Transports          []string
 	SupportedAlgorithms []int32
-	Priority           int
+	Priority            int
+	RequiresPIN         bool
 }

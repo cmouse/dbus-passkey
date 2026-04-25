@@ -94,6 +94,9 @@ func loadFile(path string) (RegistryEntry, error) {
 	if p, err := sec.Key("Priority").Int(); err == nil {
 		e.Priority = p
 	}
+	if v, err := sec.Key("RequiresPIN").Bool(); err == nil {
+		e.RequiresPIN = v
+	}
 	for _, t := range strings.Split(sec.Key("Transports").String(), ";") {
 		if t = strings.TrimSpace(t); t != "" {
 			e.Transports = append(e.Transports, t)

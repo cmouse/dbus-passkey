@@ -19,10 +19,11 @@ type TokenProvider struct {
 	path string
 }
 
-func (t *TokenProvider) ID() string           { return t.id }
-func (t *TokenProvider) Name() string         { return "FIDO2 Token (disabled)" }
-func (t *TokenProvider) Type() string         { return "hardware" }
-func (t *TokenProvider) Transports() []string { return []string{"usb"} }
+func (t *TokenProvider) ID() string                    { return t.id }
+func (t *TokenProvider) Name() string                  { return "FIDO2 Token (disabled)" }
+func (t *TokenProvider) Type() string                  { return "hardware" }
+func (t *TokenProvider) Transports() []string          { return []string{"usb"} }
+func (t *TokenProvider) RequiresPIN() bool             { return false }
 func (t *TokenProvider) SupportedAlgorithms() []int32 { return []int32{-7} }
 
 func (t *TokenProvider) HasCredentials(_ string, _ [][]byte) ([][]byte, error) {
