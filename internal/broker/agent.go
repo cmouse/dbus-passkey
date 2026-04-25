@@ -1,6 +1,7 @@
 package broker
 
 import (
+	"fmt"
 	"log"
 	"sync"
 	"time"
@@ -97,7 +98,7 @@ func (b *Broker) selectAuthenticator(
 	case r := <-ch:
 		return r.idx, r.err
 	case <-time.After(timeout):
-		return -1, nil // treat timeout as interaction-ended
+		return -1, fmt.Errorf("ui agent timeout")
 	}
 }
 
@@ -148,7 +149,7 @@ func (b *Broker) collectPIN(
 		}
 		return []byte(r.pin), nil
 	case <-time.After(timeout):
-		return nil, nil
+		return nil, fmt.Errorf("ui agent timeout")
 	}
 }
 
@@ -198,7 +199,7 @@ func (b *Broker) collectNewPIN(
 		}
 		return []byte(r.pin), nil
 	case <-time.After(timeout):
-		return nil, nil
+		return nil, fmt.Errorf("ui agent timeout")
 	}
 }
 
@@ -239,7 +240,7 @@ func (b *Broker) confirmReset(
 	case r := <-ch:
 		return r.ok, r.err
 	case <-time.After(timeout):
-		return false, nil
+		return false, fmt.Errorf("ui agent timeout")
 	}
 }
 

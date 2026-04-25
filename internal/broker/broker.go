@@ -236,7 +236,7 @@ func (b *Broker) runSetPIN(req *Request, path dbus.ObjectPath, tokenID string) {
 	// If token already has a PIN, collect the old one
 	var oldPIN []byte
 	if tokenInfo.HasPIN {
-		oldPIN, err = b.collectPIN(b.conn, path, tokenID, tokenID, tokenInfo.PINRetries, timeout)
+		oldPIN, err = b.collectPIN(b.conn, path, tokenID, tokenInfo.Name, tokenInfo.PINRetries, timeout)
 		if err != nil {
 			clearBytes(newPIN)
 			req.emitInteractionEnded()
@@ -301,18 +301,7 @@ func (b *Broker) runResetToken(req *Request, path dbus.ObjectPath, tokenID strin
 	default:
 	}
 
-	// Wire cancel to device cancel during blocking reset (waits for touch)
-	stopWatch := make(chan struct{})
-	go func() {
-		select {
-		case <-req.cancel:
-			// Signal the cancelCh passed to ResetToken via the request cancel
-		case <-stopWatch:
-		}
-	}()
-
 	err = fido2.ResetToken(tokenID, req.cancel)
-	close(stopWatch)
 
 	if err != nil {
 		if err.Error() == "cancelled" {

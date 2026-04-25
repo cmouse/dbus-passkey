@@ -1,7 +1,9 @@
 package provider
 
 import (
+	"context"
 	"fmt"
+	"sync"
 
 	"github.com/cmouse/dbus-passkey/internal/types"
 	"github.com/godbus/dbus/v5"
@@ -11,26 +13,37 @@ const providerIface = "fi.cmouse.PasskeyBroker.Provider"
 
 // DBusProvider proxies a software provider over D-Bus.
 type DBusProvider struct {
-	conn       *dbus.Conn
-	entry      RegistryEntry
-	cancelChan chan struct{}
+	conn  *dbus.Conn
+	entry RegistryEntry
+
+	mu         sync.Mutex
+	cancelFunc context.CancelFunc
 }
 
 func NewDBusProvider(conn *dbus.Conn, entry RegistryEntry) *DBusProvider {
-	return &DBusProvider{conn: conn, entry: entry, cancelChan: make(chan struct{}, 1)}
+	return &DBusProvider{conn: conn, entry: entry}
 }
 
-func (p *DBusProvider) ID() string           { return p.entry.ID }
-func (p *DBusProvider) Name() string         { return p.entry.Name }
-func (p *DBusProvider) Type() string         { return "software" }
-func (p *DBusProvider) Transports() []string { return p.entry.Transports }
+func (p *DBusProvider) ID() string                   { return p.entry.ID }
+func (p *DBusProvider) Name() string                 { return p.entry.Name }
+func (p *DBusProvider) Type() string                 { return "software" }
+func (p *DBusProvider) Transports() []string         { return p.entry.Transports }
 func (p *DBusProvider) SupportedAlgorithms() []int32 { return p.entry.SupportedAlgorithms }
 
 func (p *DBusProvider) Cancel() {
-	select {
-	case p.cancelChan <- struct{}{}:
-	default:
+	p.mu.Lock()
+	if p.cancelFunc != nil {
+		p.cancelFunc()
 	}
+	p.mu.Unlock()
+}
+
+func (p *DBusProvider) withCancel() (context.Context, context.CancelFunc) {
+	ctx, cancel := context.WithCancel(context.Background())
+	p.mu.Lock()
+	p.cancelFunc = cancel
+	p.mu.Unlock()
+	return ctx, cancel
 }
 
 func (p *DBusProvider) obj() dbus.BusObject {
@@ -48,20 +61,26 @@ func (p *DBusProvider) HasCredentials(rpID string, allowList [][]byte) ([][]byte
 }
 
 func (p *DBusProvider) MakeCredential(opts *types.MakeCredentialOptions, pin []byte) (*types.MakeCredentialResult, error) {
+	ctx, cancel := p.withCancel()
+	defer cancel()
+
 	obj := p.obj()
 	dbusOpts := makeCredentialOptsToMap(opts)
 	var resultMap map[string]dbus.Variant
-	if err := obj.Call(providerIface+".MakeCredential", 0, dbusOpts).Store(&resultMap); err != nil {
+	if err := obj.CallWithContext(ctx, providerIface+".MakeCredential", 0, dbusOpts).Store(&resultMap); err != nil {
 		return nil, err
 	}
 	return makeCredentialResultFromMap(resultMap, p.entry.ID)
 }
 
 func (p *DBusProvider) GetAssertion(opts *types.GetAssertionOptions, pin []byte) (*types.GetAssertionResult, error) {
+	ctx, cancel := p.withCancel()
+	defer cancel()
+
 	obj := p.obj()
 	dbusOpts := getAssertionOptsToMap(opts)
 	var resultMap map[string]dbus.Variant
-	if err := obj.Call(providerIface+".GetAssertion", 0, dbusOpts).Store(&resultMap); err != nil {
+	if err := obj.CallWithContext(ctx, providerIface+".GetAssertion", 0, dbusOpts).Store(&resultMap); err != nil {
 		return nil, err
 	}
 	return getAssertionResultFromMap(resultMap, p.entry.ID)

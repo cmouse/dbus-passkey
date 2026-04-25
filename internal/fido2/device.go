@@ -4,6 +4,7 @@ package fido2
 
 import (
 	"log"
+	"runtime"
 	"sync"
 )
 
@@ -26,6 +27,7 @@ func init() {
 }
 
 func (w *Worker) run() {
+	runtime.LockOSThread()
 	for item := range w.ch {
 		item.fn()
 		close(item.done)
