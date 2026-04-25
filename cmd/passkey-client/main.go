@@ -4,8 +4,8 @@
 //
 // Usage:
 //
-//	passkey-client make-credential [--rp example.com] [--user testuser]
-//	passkey-client get-assertion   --rp example.com --cred-id <hex>
+//	dbus-passkey-client make-credential [--rp example.com] [--user testuser]
+//	dbus-passkey-client get-assertion   --rp example.com --cred-id <hex>
 package main
 
 import (
