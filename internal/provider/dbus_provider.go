@@ -29,6 +29,7 @@ func (p *DBusProvider) Name() string                 { return p.entry.Name }
 func (p *DBusProvider) Type() string                 { return "software" }
 func (p *DBusProvider) Transports() []string         { return p.entry.Transports }
 func (p *DBusProvider) SupportedAlgorithms() []int32 { return p.entry.SupportedAlgorithms }
+func (p *DBusProvider) RequiresPIN() bool            { return p.entry.RequiresPIN }
 
 func (p *DBusProvider) Cancel() {
 	p.mu.Lock()
@@ -66,6 +67,12 @@ func (p *DBusProvider) MakeCredential(opts *types.MakeCredentialOptions, pin []b
 
 	obj := p.obj()
 	dbusOpts := makeCredentialOptsToMap(opts)
+	if len(pin) > 0 {
+		dbusOpts["pin"] = dbus.MakeVariant(pin)
+	}
+	if opts.InitPIN {
+		dbusOpts["init_pin"] = dbus.MakeVariant(true)
+	}
 	var resultMap map[string]dbus.Variant
 	if err := obj.CallWithContext(ctx, providerIface+".MakeCredential", 0, dbusOpts).Store(&resultMap); err != nil {
 		return nil, err
@@ -79,6 +86,9 @@ func (p *DBusProvider) GetAssertion(opts *types.GetAssertionOptions, pin []byte)
 
 	obj := p.obj()
 	dbusOpts := getAssertionOptsToMap(opts)
+	if len(pin) > 0 {
+		dbusOpts["pin"] = dbus.MakeVariant(pin)
+	}
 	var resultMap map[string]dbus.Variant
 	if err := obj.CallWithContext(ctx, providerIface+".GetAssertion", 0, dbusOpts).Store(&resultMap); err != nil {
 		return nil, err
