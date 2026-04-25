@@ -1,4 +1,5 @@
 BINARY = dbus-passkey
+TEST_PROVIDER = dbus-passkey-test-provider
 PREFIX ?= /usr
 
 build:
@@ -6,6 +7,9 @@ build:
 
 build-nofido2:
 	CGO_ENABLED=0 go build -o $(BINARY)-nofido2 ./cmd/dbus-passkey
+
+build-test-provider:
+	CGO_ENABLED=0 go build -o $(TEST_PROVIDER) ./cmd/test-provider
 
 install: build
 	install -Dm755 $(BINARY) $(DESTDIR)$(PREFIX)/libexec/$(BINARY)
@@ -15,10 +19,15 @@ install: build
 	install -Dm644 config/providers.d/example.conf \
 		$(DESTDIR)$(PREFIX)/share/dbus-passkey/providers.d/example.conf
 
+install-test-provider: build-test-provider
+	install -Dm755 $(TEST_PROVIDER) $(DESTDIR)$(PREFIX)/libexec/$(TEST_PROVIDER)
+	install -Dm644 config/providers.d/test-provider.conf \
+		$(DESTDIR)$(PREFIX)/share/dbus-passkey/providers.d/test-provider.conf
+
 vet:
 	go vet ./...
 
 clean:
-	rm -f $(BINARY) $(BINARY)-nofido2
+	rm -f $(BINARY) $(BINARY)-nofido2 $(TEST_PROVIDER)
 
-.PHONY: build build-nofido2 install vet clean
+.PHONY: build build-nofido2 build-test-provider install install-test-provider vet clean

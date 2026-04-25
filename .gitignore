@@ -4,3 +4,4 @@ dbus-passkey-nofido2
 
 # Go
 vendor/
+dbus-passkey-test-provider
