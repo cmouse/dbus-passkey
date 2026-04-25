@@ -111,6 +111,45 @@ Async. Calls `ConfirmReset` on the UI agent, then performs CTAP2 `authenticatorR
 
 **Important:** CTAP2 reset only succeeds within ~10 seconds of device power-up and requires a physical touch. Remove and reinsert the token immediately before calling `ResetToken`. All credentials on the device are permanently erased.
 
+## Testing / Manual Verification
+
+`dbus-passkey-client` is a command-line test client that exercises the broker over D-Bus.
+
+### List authenticators
+
+```sh
+dbus-passkey-client enumerate
+# [0] PasskeyTestProvider  (test-provider, software)
+# [1] YubiKey 5C NFC       (fido2-<serial>, fido2)
+```
+
+### Register a credential
+
+```sh
+dbus-passkey-client make-credential --rp example.com --user alice
+# OK
+# provider:           fido2-12345678
+# credential_id:      deadbeef…
+# attestation_object: 82…
+#
+# To assert, run:
+#   dbus-passkey-client get-assertion --rp example.com --cred-id deadbeef…
+```
+
+Options: `--rp` (relying-party ID, default `example.com`), `--user` (username, default `testuser`), `--uv` (user-verification policy: `required|preferred|discouraged`, default `preferred`).
+
+### Assert / authenticate
+
+```sh
+dbus-passkey-client get-assertion --rp example.com --cred-id deadbeef…
+# OK
+# provider:    fido2-12345678
+# credential:  deadbeef…
+# signature:   3045…
+```
+
+Omit `--cred-id` to allow any credential for the RP (discoverable credential / passkey flow).
+
 ## Security Notes
 
 - **PIN handling**: PINs are held in memory only from UI agent return to provider/libfido2 call. The `[]byte` buffer is zeroed after use. A transient `string` copy exists for the libfido2 API call and will persist until GC.
