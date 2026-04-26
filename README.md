@@ -1,6 +1,29 @@
-# dbus-passkey
+# D-Bus Passkey
+
+## Broker daemon
 
 A D-Bus broker daemon that routes FIDO2/passkey operations to physical hardware tokens (via libfido2) and registered software providers. Applications call the broker; the broker handles device selection, PIN collection (via a UI agent), and operation dispatch.
+
+## UI Agent
+
+Provides a UI agent that can be used to do selection, PIN entry and consent.
+
+## Gnome keyring provider
+
+This can be installed if you have Gnome keyring as a software passkey.
+
+## Features
+
+The broker provides support for physical keys and 3rd party software tokens.
+
+# Fast installation
+
+You can find pre-built binaries under releases. These binaries are intended to be ran under your account,
+so if you use the systemd units, they need to run as your session, so place them under /etc/systemd/user or $HOME/.config/systemd/user.
+
+The binaries can go under /usr/bin/ or ${HOME}/.local/bin.
+
+See below for testing instructions.
 
 ## Architecture
 
